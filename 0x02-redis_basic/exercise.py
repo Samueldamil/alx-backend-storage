@@ -45,7 +45,8 @@ def call_history(method: Callable) -> Callable:
     return wrapper
 
 
-def replay(method: Callable):
+def replay(method: Callable) -> None:
+    # sourcery skip: use-fstring-for-concatenation, use-fstring-for-formatting
     """
     Replays the history of a function
     Args:
@@ -53,16 +54,18 @@ def replay(method: Callable):
     Returns:
         None
     """
-    name = method.__qualname__
-    cache = redis.Redis()
-    calls = cache.get(name).decode('utf-8')
-    print("{} was called {} times:".format(name, calls))
-    inputs = cache.lrange(name + ":inputs", 0, -1)
-    outputs = cache.lrange(name + ":outputs", 0, -1)
-    for i, o in zip(inputs, outputs):
-        print("{}(*{}) -> {}".format(name, i.decode('utf-8'),
-                                     o.decode('utf-8')))
-    
+    key = method.__qualname__
+    i = "".join([key, ":inputs"])
+    o = "".join([key, ":outputs"])
+    count = method.__self__.get(key)
+    i_list = method.__self__._redis.lrange(i, 0, -1)
+    o_list = method.__self__._redis.lrange(o, 0, -1)
+    queue = list(zip(i_list, o_list))
+    print(f"{key} was called {decode_utf8(count)} times:")
+    for k, v, in queue:
+        k = decode_utf8(k)
+        v = decode_utf8(v)
+        print(f"{key}(*{k}) -> {v}")
 
 
 class Cache:
